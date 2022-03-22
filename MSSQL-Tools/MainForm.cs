@@ -49,7 +49,7 @@ namespace MSSQL_Tools
             cbs.Add(cb_c5); cbs.Add(cb_c6); cbs.Add(cb_c7); cbs.Add(cb_c8);
 
             foreach (ComboBox cb in cbs)
-                foreach (string t in FLib.ColumnTypes)
+                foreach (string t in FLib.TypesList)
                     cb.Items.Add(t);
         }
 
@@ -66,29 +66,21 @@ namespace MSSQL_Tools
 
         private void B_InsertIntoTable_Click(object sender, EventArgs e)
         {
-            DialogResult dialogResult = MessageBox.Show($"This will insert {tb_Count.Text} row(s) into a *REAL* SQL database. Continue?", "Insert into SQL database.", MessageBoxButtons.YesNo);
+            DialogResult dialogResult = MessageBox.Show($"This will insert " +
+                $"{rtb_out.Text.Select((c, i) => rtb_out.Text[i..]).Count(sub => sub.StartsWith("),("))+1} " +
+                $"row(s) into a *REAL* SQL database. Continue?", "Insert into SQL database", MessageBoxButtons.YesNo);
             if (dialogResult == DialogResult.Yes)
             {
-                string connetionString = $"Data Source={tb_Server.Text};Initial Catalog={tb_Database.Text};Integrated Security=SSPI;Encrypt=True;TrustServerCertificate=True;";
-                SqlConnection connection;
-                SqlCommand command;
-                string sql = rtb_out.Text;
-
-                connection = new SqlConnection(connetionString);
                 try
                 {
-                    connection.Open();
-                    command = new SqlCommand(sql, connection);
-                    command.ExecuteNonQuery();
-                    command.Dispose();
-                    connection.Close();
+                    FLib.ExecuteQuery(tb_Server.Text, tb_Database.Text, rtb_out.Text);
                     MessageBox.Show("Success!");
                     rtb_out.Text = "";
                     B_InsertIntoTable.Enabled = false;
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Can't open connection!\n\n"+ex);
+                    MessageBox.Show("Oh no! An error?!\n\n"+ex);
                 }
             }
             else if (dialogResult == DialogResult.No)
@@ -99,7 +91,18 @@ namespace MSSQL_Tools
 
         private void B_CurrencyRate_Click(object sender, EventArgs e)
         {
-            //rtb_out.Text = FLib.GetCurrencyRates().Keys;
+            DialogResult dialogResult = MessageBox.Show("Autoinsert ID? Naming first three columns is required: ID, Currency, Value.", "Generate currency rate query", MessageBoxButtons.YesNo);
+            if (dialogResult == DialogResult.Yes)
+            {
+                if (tb_c1.Text == "" || tb_c2.Text == "" || tb_c3.Text == "")
+                    MessageBox.Show("Column fields are empty","Warning",MessageBoxButtons.OK,MessageBoxIcon.Warning);
+                else rtb_out.Text = FLib.GenerateCurrencyRateInsertQuery_WithID(tb_c1.Text, tb_c2.Text, tb_c3.Text, tb_TableName.Text);
+            }
+            else if (dialogResult == DialogResult.No)
+            {
+                rtb_out.Text = FLib.GenerateCurrencyRateInsertQuery(tb_TableName.Text);
+            }
+            B_InsertIntoTable.Enabled = true;
         }
     }
 }
